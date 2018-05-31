@@ -134,22 +134,22 @@ return
 
 #IfWinActive, ahk_group PoEWindowGrp
 ^F1::
-GoSub, cycleActUp
-return
-
-#IfWinActive, ahk_group PoEWindowGrp
-!F1::
 GoSub, cycleActDown
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 ^F2::
-GoSub, cycleZoneUp
+GoSub, cycleActUp
+return
+
+#IfWinActive, ahk_group PoEWindowGrp
+!F1::
+GoSub, cycleZoneDown
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 !F2:: 
-GoSub, cycleZoneDown
+GoSub, cycleZoneUp
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
