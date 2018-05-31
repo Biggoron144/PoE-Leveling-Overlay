@@ -134,62 +134,97 @@ return
 
 #IfWinActive, ahk_group PoEWindowGrp
 ^F1::
-GuiControl, Controls:+AltSubmit, DdlA
-Gui, Controls:Submit, NoHide
-pos := DdlA
-GuiControl, Controls:-AltSubmit, DdlA
-if (pos > 1) {
-    Gui, Controls:Submit, NoHide
-    pos := pos - 1
-    GuiControl, Controls:Choose, DdlA, % "|" pos
-}
-Gosub, ActivatePOE
+GoSub, cycleActUp
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 !F1::
-GuiControl, Controls:+AltSubmit, DdlA
-Gui, Controls:Submit, NoHide
-pos := DdlA
-GuiControl, Controls:-AltSubmit, DdlA
-Gui, Controls:Submit, NoHide
-pos := pos + 1
-GuiControl, Controls:Choose, DdlA, % "|" pos
-Gosub, ActivatePOE
+GoSub, cycleActDown
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 ^F2::
-GuiControl, Controls:+AltSubmit, DdlZ
-Gui, Controls:Submit, NoHide
-pos := DdlZ
-GuiControl, Controls:-AltSubmit, DdlZ
-if (pos > 1) {
-    Gui, Controls:Submit, NoHide
-    pos := pos - 1
-    GuiControl, Controls:Choose, DdlZ, % "|" pos
-}
-Gosub, ActivatePOE
+GoSub, cycleZoneUp
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 !F2:: 
-GuiControl, Controls:+AltSubmit, DdlZ
-Gui, Controls:Submit, NoHide
-pos := DdlZ
-GuiControl, Controls:-AltSubmit, DdlZ
-Gui, Controls:Submit, NoHide
-pos := pos + 1
-GuiControl, Controls:Choose, DdlZ, % pos
-Gosub, changeZone
-Gosub, ActivatePOE
+GoSub, cycleZoneDown
 return
 
+#IfWinActive, ahk_group PoEWindowGrp
+$WheelUp::
+    ; $ prevents triggering this when using Send {WheelUp}
+    MouseGetPos, mouseX, mouseY
+    mouseOverControlOrImage := CheckIfMouseInRegion("up")
+    If (mouseOverControlOrImage) {
+        ; trigger zone/act changes   
+    }
+    Else {
+        Send {WheelUp}
+    }
+return
 
+#IfWinActive, ahk_group PoEWindowGrp
+$WheelDown::
+    ; $ prevents triggering this when using Send {WheelDown}
+    mouseOverControlOrImage := CheckIfMouseInRegion("down")
+    If (mouseOverControlOrImage) {
+        ; trigger zone/act changes        
+    }
+    Else {
+        Send {WheelDown}
+    }    
+return
 
  
 ;========== Subs and Functions =======
- 
+
+CheckIfMouseInRegion(direction) {
+    MouseGetPos, mouseX, mouseY, window, winControl
+    
+    overImage := false
+    Loop, % maxImages {
+        id := Image%A_Index%Window
+        If (id == window) {
+            overImage := true
+        }
+    }
+
+    overDropdownAct := false
+    overDropdownZone := false
+    If (window == ControlsWindow) {
+        If (winControl = "ComboBox1") {
+            overDropdownAct := true
+        }
+        Else If (winControl = "ComboBox2") {
+            overDropdownZone := true
+        }
+    }
+    
+    If (overDropdownZone or overImage) {
+        ; change zones
+        If (direction = "up") {
+            GoSub, cycleZoneUp
+        } Else If (direction = "down") {
+            GoSub, cycleZoneDown
+        }
+
+        Return true
+    } Else If (overDropDownAct) {
+        ; change act
+        If (direction = "up") {
+            GoSub, cycleActUp
+        } Else If (direction = "down") {
+            GoSub, cycleActDown
+        }
+        
+        Return true
+    }
+    
+    Return false
+}
+
 ActivatePOE:
     WinActivate, ahk_id %PoEWindowHwnd%
 return
@@ -270,20 +305,20 @@ DrawGUI3_1:
 	WinSet, ExStyle, +0x20, ahk_id %ParentWindow% ; 0x20 = WS_EX_CLICKTHROUGH
     WinSet, Style, -0xC00000, ahk_id %ParentWindow%
     
-    LastCounter := Counter
-    Counter := 0
     Loop, % maxImages {
-        filepath := "" A_ScriptDir "\Overlays\" data.DdlA "\" data.DdlZ "_Seed_" A_Index ".jpg" ""
+        filepath := "" A_ScriptDir "\Overlays\" data.DdlA "\" data.DdlZ "_Seed_" A_Index ".jpg" ""        
         xPos := xPosLayoutParent + maxImages * 110 - (A_Index) * 110 - (5 * A_Index)
-
-        If (FileExist(filepath)) {
-            Gui, Image%A_Index%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%A_Index%Window
-            Gui, Image%A_Index%:Add, Picture, VPic%A_Index% x0 y0 w110 h60, %filepath%
-            Gui, Image%A_Index%:Show, w110 h60 x%xPos% y5, Image%A_Index%
-            Gui, Image%A_Index%:+OwnerParent
-            Gui, Image%A_Index%: +LastFound
-            WinSet, Transparent, %windowTrans%
-            Counter := Counter + 1
+        
+        Gui, Image%A_Index%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%A_Index%Window
+        id := Image%A_Index%Window
+        Gui, Image%A_Index%:Add, Picture, VPic%A_Index% x0 y0 w110 h60, %filepath%
+        Gui, Image%A_Index%:Show, w110 h60 x%xPos% y5, Image%A_Index%
+        Gui, Image%A_Index%:+OwnerParent
+        
+        If (not FileExist(filepath)) {            
+            WinSet, Transparent, 0, ahk_id %id%
+        } Else {
+            WinSet, Transparent, %windowTrans%, ahk_id %id%
         }
     }
     
@@ -325,7 +360,11 @@ GetDelimitedZoneListString(data, act) {
             }
         }        
 	}
-	Return RegExReplace(dList, "^\|")
+    dList := RegExReplace(dList, "^\|")
+    _temp := RegExReplace(dList, "\|", "", count)
+    dList := count = 1 ? dList . "|" : dList 
+    
+	Return dList
 }
 
 GetDefaultZone(zones, act) {
@@ -336,26 +375,76 @@ GetDefaultZone(zones, act) {
 	}
 }
 
-changeAct:
-    Gui, Controls:Submit, NoHide
+GetDifferentZone(direction, zones, act, current) {
+    newZone := ""
+    indexShift := direction = "next" ? 1 : -1
+    first := ""
+    last := ""
     
-    Loop, % maxImages {
-        Gui, Image%A_Index%:Submit, NoHide    
+    For key, zone in zones {
+        If (zone.act = act) {
+            Loop, % zone["list"].Length()
+            {
+                If (A_Index = 1) {
+                    first := zone.list[A_Index]
+                }
+                If (A_Index = zone.list.MaxIndex()) {                
+                    last := zone.list[A_Index]
+                }
+                
+                If (zone.list[A_Index] = current) {
+                    newZone := zone.list[A_Index + indexShift] 
+                }
+            }
+            break
+        } 
+	}
+    
+    If (not StrLen(newZone)) {
+        newZone := direction = "next" ? first : last
     }
     
-    GuiControl,,DdlZ, % "|" GetDelimitedZoneListString(data.zones, DdlA)
-    DdlZ := GetDefaultZone(data.zones, DdlA)
+    Return newZone
+}
 
-    Loop, % maxImages {
-        filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" A_Index ".jpg" ""
-        If (FileExist(filepath)) {
-            GuiControl,Image%A_Index%:,Pic%A_Index%, *w110 *h60 %filepath%        
-            Gui, Image%A_Index%:Show
-            Gui, Image%A_Index%:+OwnerParent
-        } Else {
-            Gui, Image%A_Index%:Destroy
+GetDifferentAct(direction, acts, current) {
+    newAct := ""
+    indexShift := direction = "next" ? 1 : -1
+    first := ""
+    last := ""
+    
+    Loop, % acts.Length()
+    {
+        If (A_Index = 1) {
+            first := acts[A_Index]
+        }
+        If (A_Index = acts.MaxIndex()) {                
+            last := acts[A_Index]
+        }
+        
+        If (acts[A_Index] = current) {
+            newAct := acts[A_Index + indexShift] 
         }
     }
+    
+    If (not StrLen(newAct)) {
+        newAct := direction = "next" ? first : last
+    }
+    
+    Return newAct
+}
+
+changeAct:
+    Gui, Controls:Submit, NoHide
+
+    Loop, % maxImages {
+        Gui, Image%A_Index%:Submit, NoHide
+    }
+    
+    GuiControl,,DdlZ, % "|" test := GetDelimitedZoneListString(data.zones, DdlA)
+    DdlZ := GetDefaultZone(data.zones, DdlA)    
+
+    GoSub, UpdateImages
     GoSub, ActivatePOE
 return
 
@@ -366,37 +455,72 @@ changeZone:
         Gui, Image%A_Index%:Submit, NoHide
     }
     
-    LastCounter := Counter
-    Counter := 0
+    GoSub, UpdateImages
+    GoSub, ActivatePOE
+return
+
+cycleZoneUp:
+    Gui, Controls:Submit, NoHide
+    _zone := GetDifferentZone("next", data.zones, DdlA, DdlZ)
+    GuiControl, Controls:Choose, DdlZ, % "|" _zone
+    
+    GoSub, UpdateImages
+    GoSub, ActivatePOE
+return
+
+cycleZoneDown:
+    Gui, Controls:Submit, NoHide
+    _zone := GetDifferentZone("previous", data.zones, DdlA, DdlZ)
+    GuiControl, Controls:Choose, DdlZ, % "|" _zone
+    
+    GoSub, UpdateImages
+    GoSub, ActivatePOE
+return
+
+cycleActUp:
+    Gui, Controls:Submit, NoHide
+    _zone := GetDifferentAct("next", data.acts, DdlA)
+    
+    Loop, % maxImages {
+        Gui, Image%A_Index%:Submit, NoHide
+    }
+    
+    GuiControl, Controls:Choose, DdlA, % "|" _zone
+
+    GoSub, UpdateImages
+    GoSub, ActivatePOE
+return
+
+cycleActDown:
+    Gui, Controls:Submit, NoHide
+    _zone := GetDifferentAct("previous", data.acts, DdlA)
+
+    Loop, % maxImages {
+        Gui, Image%A_Index%:Submit, NoHide
+    }
+
+    GuiControl, Controls:Choose, DdlA, % "|" _zone
+
+    GoSub, UpdateImages
+    GoSub, ActivatePOE
+return
+
+UpdateImages:
     Loop, % maxImages {
         filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" A_Index ".jpg" ""
+
+        id := Image%A_Index%Window
+        
         If (FileExist(filepath)) {
             GuiControl,Image%A_Index%:,Pic%A_Index%, *w110 *h60 %filepath%
-            Gui, Image%A_Index%:Show
-            Gui, Image%A_Index%:+OwnerParent
-            Counter := Counter + 1
-        } Else {
-            Gui, Image%A_Index%:Destroy
+            WinSet, Transparent, %windowTrans%, ahk_id %id%            
+        } 
+        Else {
+            WinSet, Transparent, 0, ahk_id %id%
         }
+        Gui, Image%A_Index%:Show
+        Gui, Image%A_Index%:+OwnerParent
     }
-    If (Counter > LastCounter) {
-        Loop, % maxImages - LastCounter {
-            CurrentIndex := A_Index + LastCounter
-            filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" CurrentIndex ".jpg" ""
-            xPos := xPosLayoutParent + maxImages * 110 - (CurrentIndex) * 110 - (5 * CurrentIndex)
-            
-
-            If (FileExist(filepath)) {
-                Gui, Image%CurrentIndex%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%CurrentIndex%Window
-                Gui, Image%CurrentIndex%:Add, Picture, VPic%CurrentIndex% x0 y0 w110 h60, %filepath%
-                Gui, Image%CurrentIndex%:Show, w110 h60 x%xPos% y5, Image%CurrentIndex%
-                Gui, Image%CurrentIndex%:+OwnerParent
-                Gui, Image%CurrentIndex%: +LastFound
-                WinSet, Transparent, %windowTrans%
-            }
-        }
-    }
-    GoSub, ActivatePOE
 return
 
 ShowGuiTimer:
