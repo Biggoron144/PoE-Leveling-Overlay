@@ -50,6 +50,8 @@ global xp_active := false
 global skills_active := false
 global layout_active := false
 global image_active := false
+global LastCounter := 0
+global Counter := 0
 
 Gosub, DrawGUI1
 Gosub, DrawGUI2_1
@@ -156,6 +158,7 @@ return
 DrawGUI1:
     Gui, 1:+E0x20 -Caption +LastFound +ToolWindow +AlwaysOnTop +hwndXpWindow
     Gui, 1:Font, s9, Consolas
+    WinSet, Transparent, %opacity%
     
     xp_ranges = 
     (LTrim
@@ -170,8 +173,8 @@ DrawGUI1:
     Gui, 1:Add, Text, x5 y+5, % xp_ranges
 
     CalculateCellTextDimensions(xp_ranges, 9, "Consolas", xp_height, xp_width)
-    _width := xp_width
-    _height:= xp_height + 10
+    _width := xp_width - 15
+    _height:= xp_height
     
     Gui, 1:Show, x%xPosXPRange% y5 w%_width% h%_height%
     gui_1_toggle := 1
@@ -228,22 +231,20 @@ DrawGUI3_1:
 	WinSet, ExStyle, +0x20, ahk_id %ParentWindow% ; 0x20 = WS_EX_CLICKTHROUGH
     WinSet, Style, -0xC00000, ahk_id %ParentWindow%
     
+    LastCounter := Counter
+    Counter := 0
     Loop, % maxImages {
-        filepath := "" A_ScriptDir "\Overlays\" data.DdlA "\" data.DdlZ "_Seed_" A_Index ".jpg" ""        
-        xPos := xPosLayoutParent + (A_Index - 1) * 110 + (5 * A_Index)
-        
-        Gui, Image%A_Index%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%A_Index%Window
-        id := Image%A_Index%Window
+        filepath := "" A_ScriptDir "\Overlays\" data.DdlA "\" data.DdlZ "_Seed_" A_Index ".jpg" ""
+        xPos := xPosLayoutParent + maxImages * 110 - (A_Index) * 110 - (5 * A_Index)
+
         If (FileExist(filepath)) {
+            Gui, Image%A_Index%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%A_Index%Window
             Gui, Image%A_Index%:Add, Picture, VPic%A_Index% x0 y0 w110 h60, %filepath%
-        }
-        Gui, Image%A_Index%:Show, w110 h60 x%xPos% y5, Image%A_Index%
-        Gui, Image%A_Index%:+OwnerParent
-        
-        If (not FileExist(filepath)) {            
-            WinSet, Transparent, 0, ahk_id %id%
-        } Else {
-            WinSet, Transparent, %windowTrans%, ahk_id %id%
+            Gui, Image%A_Index%:Show, w110 h60 x%xPos% y5, Image%A_Index%
+            Gui, Image%A_Index%:+OwnerParent
+            Gui, Image%A_Index%: +LastFound
+            WinSet, Transparent, %windowTrans%
+            Counter := Counter + 1
         }
     }
     
@@ -253,7 +254,7 @@ DrawGUI3_1:
     Gui, Controls:Add, DropDownList, VDdlA GchangeAct x0 y0 w90 h200 , % GetDelimitedActListString(data.zones, "Act I")
     Gui, Controls:Add, DropDownList, VDdlZ GchangeZone x+5 y0 w120 h250 , % GetDelimitedZoneListString(data.zones, "Act I")
     Gui, Controls:+OwnerParent
-    xPos := xPosLayoutParent + 5
+    xPos := xPosLayoutParent + 330
     Gui, Controls:Show, h21 w215 x%xPos% y68, Controls
 
     gui_3_toggle := 1
@@ -308,17 +309,13 @@ changeAct:
 
     Loop, % maxImages {
         filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" A_Index ".jpg" ""
-        id := Image%A_Index%Window
-        
         If (FileExist(filepath)) {
-            GuiControl,Image%A_Index%:,Pic%A_Index%, *w110 *h60 %filepath%
-            WinSet, Transparent, %windowTrans%, ahk_id %id%            
-        } 
-        Else {
-            WinSet, Transparent, 0, ahk_id %id%
+            GuiControl,Image%A_Index%:,Pic%A_Index%, *w110 *h60 %filepath%        
+            Gui, Image%A_Index%:Show
+            Gui, Image%A_Index%:+OwnerParent
+        } Else {
+            Gui, Image%A_Index%:Destroy
         }
-        Gui, Image%A_Index%:Show
-        Gui, Image%A_Index%:+OwnerParent
     }
     GoSub, ActivatePOE
 return
@@ -330,19 +327,35 @@ changeZone:
         Gui, Image%A_Index%:Submit, NoHide
     }
     
+    LastCounter := Counter
+    Counter := 0
     Loop, % maxImages {
         filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" A_Index ".jpg" ""
-        id := Image%A_Index%Window
-        
         If (FileExist(filepath)) {
             GuiControl,Image%A_Index%:,Pic%A_Index%, *w110 *h60 %filepath%
-            WinSet, Transparent, %windowTrans%, ahk_id %id%            
-        } 
-        Else {
-            WinSet, Transparent, 0, ahk_id %id%
+            Gui, Image%A_Index%:Show
+            Gui, Image%A_Index%:+OwnerParent
+            Counter := Counter + 1
+        } Else {
+            Gui, Image%A_Index%:Destroy
         }
-        Gui, Image%A_Index%:Show
-        Gui, Image%A_Index%:+OwnerParent
+    }
+    If (Counter > LastCounter) {
+        Loop, % maxImages - LastCounter {
+            CurrentIndex := A_Index + LastCounter
+            filepath := "" A_ScriptDir "\Overlays\" DdlA "\" DdlZ "_Seed_" CurrentIndex ".jpg" ""
+            xPos := xPosLayoutParent + maxImages * 110 - (CurrentIndex) * 110 - (5 * CurrentIndex)
+            
+
+            If (FileExist(filepath)) {
+                Gui, Image%CurrentIndex%:New, -resize -SysMenu -Caption +AlwaysOnTop +hwndImage%CurrentIndex%Window
+                Gui, Image%CurrentIndex%:Add, Picture, VPic%CurrentIndex% x0 y0 w110 h60, %filepath%
+                Gui, Image%CurrentIndex%:Show, w110 h60 x%xPos% y5, Image%CurrentIndex%
+                Gui, Image%CurrentIndex%:+OwnerParent
+                Gui, Image%CurrentIndex%: +LastFound
+                WinSet, Transparent, %windowTrans%
+            }
+        }
     }
     GoSub, ActivatePOE
 return
