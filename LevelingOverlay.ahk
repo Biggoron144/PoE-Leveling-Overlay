@@ -73,7 +73,7 @@ Return
  
 ;========== Quest Rewards =======
 #IfWinActive, ahk_group PoEWindowGrp
-+F3::
++F3:: ; Display/Hide gem leveler window hotkey
     if (gui_2_toggle = 0)
     {
         Gosub, DrawGUI2_1
@@ -87,7 +87,7 @@ Return
     Gosub, ActivatePOE
     return
      
-    ^F3::
+!F3::
         Gui, 2:Destroy
         Gosub, DrawGUI2_1
         return
@@ -98,7 +98,7 @@ return
  
 ;========== XP Range =======
 #IfWinActive, ahk_group PoEWindowGrp
-+F4::
++F4:: ; Display/Hide xp range window hotkey
     if (gui_1_toggle = 0)
     {
         Gosub, DrawGUI1
@@ -113,7 +113,7 @@ return
  
 ;========== Zone Layouts =======
 #IfWinActive, ahk_group PoEWindowGrp
-+F1::
++F1:: ; Display/Hide zone layout window hotkey
     if (gui_3_toggle = 0)
     {
         Gosub, DrawGUI3_1
@@ -130,23 +130,62 @@ return
     Gosub, ActivatePOE
 return
 
+; Dropdown tab switching hotkeys listed below
+
 #IfWinActive, ahk_group PoEWindowGrp
 ^F1::
-    GuiControl, Choose,DdlA,3
+GuiControl, Controls:+AltSubmit, DdlA
+Gui, Controls:Submit, NoHide
+pos := DdlA
+GuiControl, Controls:-AltSubmit, DdlA
+if (pos > 1) {
+    Gui, Controls:Submit, NoHide
+    pos := pos - 1
+    GuiControl, Controls:Choose, DdlA, % "|" pos
+}
+Gosub, ActivatePOE
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 !F1::
-    Control, Choose,DdlA,2
+GuiControl, Controls:+AltSubmit, DdlA
+Gui, Controls:Submit, NoHide
+pos := DdlA
+GuiControl, Controls:-AltSubmit, DdlA
+Gui, Controls:Submit, NoHide
+pos := pos + 1
+GuiControl, Controls:Choose, DdlA, % "|" pos
+Gosub, ActivatePOE
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
 ^F2::
+GuiControl, Controls:+AltSubmit, DdlZ
+Gui, Controls:Submit, NoHide
+pos := DdlZ
+GuiControl, Controls:-AltSubmit, DdlZ
+if (pos > 1) {
+    Gui, Controls:Submit, NoHide
+    pos := pos - 1
+    GuiControl, Controls:Choose, DdlZ, % "|" pos
+}
+Gosub, ActivatePOE
 return
 
 #IfWinActive, ahk_group PoEWindowGrp
-!F2::
+!F2:: 
+GuiControl, Controls:+AltSubmit, DdlZ
+Gui, Controls:Submit, NoHide
+pos := DdlZ
+GuiControl, Controls:-AltSubmit, DdlZ
+Gui, Controls:Submit, NoHide
+pos := pos + 1
+GuiControl, Controls:Choose, DdlZ, % pos
+Gosub, changeZone
+Gosub, ActivatePOE
 return
+
+
 
  
 ;========== Subs and Functions =======
