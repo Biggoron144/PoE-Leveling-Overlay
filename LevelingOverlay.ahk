@@ -247,8 +247,8 @@ DrawGUI1:
     Gui, 1:Add, Text, x5 y+5, % xp_ranges
 
     CalculateCellTextDimensions(xp_ranges, 9, "Consolas", xp_height, xp_width)
-    _width := xp_width - 15
-    _height:= xp_height
+    _width := xp_width
+    _height:= xp_height + 10
     
     Gui, 1:Show, x%xPosXPRange% y5 w%_width% h%_height%
     gui_1_toggle := 1
