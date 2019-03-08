@@ -21,4 +21,4 @@ Shift+F4
 
 ##### Drag and drop the overlay tiles
 1. Remove their transparency in the script (ctrl+f transparen)
-1. Press Alt+space to pickup the context menu when youve got the tile in focus and use the arrow keys.
+1. Press Alt+space to pickup the context menu when youve got the tile in focus and use the arrow keys. Note that this has to be done every time you load the script unless you modify the xy coordinates in the script itself.
